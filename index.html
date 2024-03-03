@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>animated SVG to webm</title>
+    <script src="https://code.jquery.com/jquery-3.6.3.js"></script>
+    <link rel="stylesheet" href="./Google Translate_mememaker_files/ColourgreyShorter.css">
+    <script src="./Google Translate_mememaker_files/ColourgreyShorterCSSJS.js"></script>
+    <link rel="manifest" href="./Google Translate_mememaker_files/manifest.json">
+    <style>
+        .with_placeholder::after {
+            content: 'your svg code';
+            color: grey;
+        }
+
+        @keyframes blinking_text {
+            from {
+                opacity: 1.0;
+            }
+
+            30% {
+                opacity: 1.0;
+            }
+
+            50% {
+                opacity: 0.0;
+            }
+
+            70% {
+                opacity: 1.0;
+            }
+
+            to {
+                opacity: 1.0;
+            }
+        }
+
+        [contenteditable='true']:focus {
+
+            border: 1.5px solid #050505;
+        }
+
+        /*[contenteditable='true']:focus::after {
+            content: '';
+            width: 0.08px;
+            height: 1em;
+            padding-top: 0.08em;
+            background: #050505;
+            animation: blinking_text 0.08s infinite;
+        }*/
+
+        [contenteditable='true'] {
+            border: 1px solid #050505;
+        }
+
+        #customSVG {
+            --shadow-deepness: 0.4px;
+            box-shadow: calc(1 * var(--shadow-deepness)) calc(1 * var(--shadow-deepness)) 0.5px 0.5px #555555 inset, calc(1 * var(--shadow-deepness)) calc(-1 * var(--shadow-deepness)) 0.5px 0.5px #555555 inset, calc(-1 * var(--shadow-deepness)) calc(1 * var(--shadow-deepness)) 0.5px 0.5px #555555 inset, calc(-1 * var(--shadow-deepness)) calc(-1 * var(--shadow-deepness)) 0.5px 0.5px #555555 inset;
+        }
+
+        #customSVG:focus {
+            --shadow-deepness: 0.6px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="body">
+        <img id="myimg" src="./Google Translate_mememaker_files/민주공화국.svg">
+        <div class="btn-group" style="--bs-border-radius:0.85rem;">
+            <button onclick="startAll()" class="btn btn-primary split gap-left">start</button><a href="#" id="mylink"
+                class="btn btn-primary split gap-left gap-right">download</a><button onclick="stop_recording()"
+                class="btn btn-primary split gap-right">stop</button>
+            <input type="text" name="length" id="length"
+                onkeyup="var length = this.value; if (!isNaN(Number(length))) { stopframe=Number(length); } else {this.value='10000'}"
+                placeholder="full length in frames">
+        </div>
+        <div contenteditable="true"
+            style="min-width: 100px; border: 1px solid #050505;min-height: 800px;max-width: 60%;" id="customSVG">
+        </div>
+        <ul>
+            <li>
+                <h2>plz read texts below</h2>
+            </li>
+            <li>
+                <hr>
+            </li>
+            <li>
+                <h4>default length of your video <span style="font-weight: bold;">10000 f</span></h4>
+            </li>
+            <li>
+                <h4><span style="font-weight: bold;">you can&apos;t convert to a format not webm. (MediaRecorder API of
+                        Google Chrome does not support formats that are not webm <span style="font-style: italic;">-such
+                            as mp4,avi,mov etc-</span>)</span></h4>
+            </li>
+        </ul>
+        <canvas id="mycanvas" width="720" height="360"></canvas>
+    </div>
+    <div style="display: none;" class="enablepopover tabs_wrapper btn-group-nobs foldings_wrapper">
+        <span id="popover_trigger_0" data-cgrshorter-action="popover"
+            data-popover-text="|br| |video src=&quot;video_src&quot; width=&quot;410&quot; controls||/video| |br| |p||span|successfully converted.|/span||/p|">____</span>
+    </div>
+    <script>
+        var cgrcssjs = new ColourgreyShorterJS.ColourgreyShorterCSS(false);
+        var stopframe = 10000;
+        var HTML_Text = {
+            Text_to_HTML: function (str) {
+                var newStr = new String(str);
+                newStr = newStr.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&apos;', "'").replaceAll('&quot;', '"')
+                return newStr;
+            },
+            HTML_to_Text: function (str) {
+                var newStr = new String(str);
+                newStr = newStr.replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll("'", '&apos;').replaceAll('"', '&quot;');
+                return newStr;
+            }
+        }
+        var HTMLFunc = HTML_Text.Text_to_HTML;
+        function toDataURL0(url, callback) {
+            var xhr = new XMLHttpRequest();
+            xhr.onload = function () {
+                var reader = new FileReader();
+                reader.onloadend = function () {
+                    callback(reader.result);
+                }
+                reader.readAsDataURL(xhr.response);
+            };
+            xhr.open('GET', url);
+            xhr.responseType = 'blob';
+            xhr.send();
+        }
+        function toDataURL(blob, callback) {
+            var reader = new FileReader();
+            reader.onloadend = function () {
+                callback(reader.result);
+            }
+            reader.readAsDataURL(blob);
+        }
+        function img_width_height() {
+            var rtv = { x: 750, y: 200 };
+            return rtv;
+        }
+        var capturing = {
+            el: null,
+            canvas: null,
+            encoded: '',
+            format: 'image/png',
+            imgEl: null,
+            mode: 'html',
+            svginner: '',
+            SVGonCanvas: function (canvasid) {
+
+                var el = (this.el instanceof HTMLElement) ? this.el : (typeof this.el === 'string') ? document.getElementById(this.el) : null;
+                if (!(el instanceof HTMLElement)) {
+                    return false;
+                }
+                var thisobj = this;
+                var c0 = document.getElementById("mycanvas");
+                var c = document.getElementById(canvasid);
+                var ctx = c.getContext("2d");
+
+                var data = (this.mode === 'html') ? `<?xml version="1.0" standalone="no"?> 
+    <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="${img_width_height().x}" height="${img_width_height().y}"> <foreignObject width="${img_width_height().x}" height="${img_width_height().y}" x="0" y="0"><div xmlns="http://www.w3.org/1999/xhtml">${HTMLFunc(this.el.innerText)}</div></foreignObject></svg>` : `<?xml version="1.0" standalone="no"?> 
+    <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="${img_width_height().x}" height="${img_width_height().y}">${HTMLFunc(this.el.innerText)}</svg>`;
+                console.log(data);
+
+                var DOMURL = self.URL || self.webkitURL || self;
+                var img = new Image();
+                var svg = new Blob([data], {
+                    type: "image/svg+xml"
+                });
+                var url = DOMURL.createObjectURL(svg);
+                img.onerror = function (e) {
+                    console.log(url)
+                };
+                img.onload = function () {
+                    DOMURL.revokeObjectURL(url);
+                    thisobj.encoded = c.toDataURL(thisobj.format);
+                };
+                /*var svgstream = new FileReader();
+                svgstream.readAsDataURL(svg);*/
+                /*img.src = 'data:image/svg+xml;base64,' + btoa(data);*/
+                toDataURL(svg, function (param) {
+                    img.src = param;
+                    if (thisobj.imgEl instanceof HTMLImageElement) {
+                        thisobj.imgEl.src = param;
+                    }
+                });
+                return this.imgEl.src;
+            },
+            captureArea: function (canvasid, callbackfunc) {
+                var el = (this.el instanceof HTMLElement) ? this.el : (typeof this.el === 'string') ? document.getElementById(this.el) : null;
+                if (!(el instanceof HTMLElement) || typeof callbackfunc !== 'function') {
+                    return false;
+                }
+                this.SVGonCanvas(canvasid);
+                var newStr = this.encoded;
+                callbackfunc(newStr);
+            },
+            downloadBase64Image: function (filename) {
+                if (typeof this.encoded !== 'string' || typeof filename !== 'string') {
+                    console.log(this.encoded)
+                    return false;
+                }
+                var str = this.encoded;
+                var newLink = document.createElement("a");
+                newLink.href = str;
+                newLink.download = filename;
+                console.log(newLink);
+                newLink.click();
+                return true;
+            },
+            capture: function ({ canvasid, download }) {
+                var rtv = '';
+                console.log(download);
+                if (typeof download !== 'boolean') {
+                    download = false;
+                }
+                console.log(download);
+                var format = this.format;
+                var thisobj = this;
+                var downloadExtension = '';
+                if (typeof format !== 'string') {
+                    downloadExtension = 'png';
+                } else {
+                    downloadExtension = (format.split('/').length == 2) ? (format.split('/')[1].split('+').length > 1) ? format.split('/')[1].split('+')[0] : format.split('/')[1] : format;
+                }
+                this.captureArea(canvasid, function (str) {
+                    if (download) {
+                        thisobj.downloadBase64Image('download' + '.' + downloadExtension);
+                    }
+                    rtv = str;
+                });
+                return rtv;
+            },
+            setFormat: function (format) {
+                if (typeof format !== 'string') {
+                    format = 'image/png';
+                }
+                this.format = format;
+                return this.format;
+            },
+            setEl: function (elparam, imgElparam, canvasparam) {
+                this.el = (elparam instanceof HTMLElement) ? elparam : (typeof elparam == 'string') ? document.getElementById(elparam) : null;
+                this.imgEl = (imgElparam instanceof HTMLElement) ? imgElparam : (typeof elparam == 'string') ? document.getElementById(imgElparam) : null;
+                this.canvas = (canvasparam instanceof HTMLElement) ? canvasparam : (typeof elparam == 'string') ? document.getElementById(canvasparam) : null;
+                return this.el;
+            },
+            changeMode(mode) {
+                if (!(mode === 'html' || mode === 'svg')) {
+                    mode = 'html';
+                }
+                this.mode = mode;
+                return mode;
+            }
+        }
+        var mycanvas = document.getElementById("mycanvas");
+        var myimg = document.getElementById("myimg");
+        var customSVG = document.getElementById("customSVG");
+        var mycanvas2 = mycanvas.getContext("2d");
+        var mylink = document.getElementById("mylink");
+        capturing.setEl(customSVG)
+        var data = [];
+        var recorder = null;
+        var handle;
+        function start_recording() {
+            var stream = mycanvas.captureStream();
+            var tracks = stream.getTracks();
+            var stream2 = new MediaStream(tracks);
+            recorder = new MediaRecorder(stream2, { mimeType: "video/webm" });
+            recorder.ondataavailable = function (ev) {
+                if (ev.data && ev.data.size) {
+                    console.log(ev.data);
+                    data.push(ev.data);
+                }
+            }
+            recorder.onstop = function (ev) {
+                var url = URL.createObjectURL(new Blob(data, { type: "video/webm" }));
+                console.log(new Blob(data, { type: "video/webm" }));
+                mylink.href = url;
+                mylink.classList.add("btn-success");
+                mylink.download = "download.webm";
+                mylink.addEventListener("click", function (ev) {
+                    mylink.classList.remove("btn-success");
+                    mylink.classList.add("btn-primary");
+                    document.getEl_Id("popover_trigger_0").click();
+                    document.getEl_Class("popover-box")[0].innerHTML = document.getEl_Class("popover-box")[0].innerHTML.replace(`video_src`, mylink.href);
+                    data = [];
+                });
+                toDataURL(new Blob(data, { type: "video/webm" }), function (param) {
+                    url = param;
+                });
+            }
+            handle = requestAnimationFrame(drawFrame);
+            recorder.start();
+        }
+        function stop_recording() {
+            if (recorder instanceof MediaRecorder) {
+                console.log('stopped');
+                recorder.stop();
+            }
+        }
+        function drawFrame(timestamp) {
+            console.log(timestamp);
+            if (timestamp <= stopframe) {
+                mycanvas2.drawImage(myimg, 0, 0);
+                requestAnimationFrame(drawFrame);
+            } else {
+                stop_recording();
+            }
+        }
+        function startAll() {
+            /*
+            toDataURL(new Blob([`<?xml version="1.0" standalone="no"?> 
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"> 
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="720" height="360">
+<g fill="#e8e8e8">
+<rect width="100%" height="100%">
+
+</rect>
+<g transform="translate(270 180) scale(0.75 0.75)">
+<path d="M-360-240h720v480h-720z" fill="#fff" stroke="#050505" stroke-width="0.8" />
+<g transform="rotate(-56.31)"><g id="b">
+<path id="a" stroke="#050505" stroke-width="20" d="M-60-250H60m-120 30H60m-120 30H60"></path>
+<use xlink:href="#a" y="440"></use>
+</g>
+<path stroke="#fff" stroke-width="10" d="M0 170v100"></path>
+<circle r="120" fill="#cd2e3a">
+</circle>
+
+<path d="M0-120A60 60 0 0 0 0 0a60 60 0 0 1 0 120 120 120 0 0 1 0-240Z" fill="#0047a0">
+</path>
+
+</g>
+<g transform="rotate(-123.69)">
+<use xlink:href="#b"></use>
+<path stroke="#fff" stroke-width="10" d="M0-235v30M0 170v35m0 30v30"></path>
+</g>
+</g>
+</g>
+<g transform="scale(0.4 0.4) translate(0 125)">
+<g transform="translate(0 0)">
+<path d="M90 120 310 120 M205 50 C205 50 185 220 90 320 M200 120 C195 120 240 220 310 320" fill="none" stroke="#AAAAAA" stroke-opacity="1.0" stroke-width="21.6" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M90 120 310 120" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="220" stroke-dashoffset="220">
+<animate begin="0;k4.end+0s" dur="20s" attributeName="stroke-dashoffset" keyTimes="0;0.0833;1.0" values="220;0;0" calcMode="linear" />
+</path>
+<path d="M205 50 C205 50 185 220 90 320" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="300" stroke-dashoffset="300">
+<animate id="k0" begin="0;k4.end+0s" dur="20s" attributeName="stroke-dashoffset" keyTimes="0;0.0833;0.166;1.0" values="300;300;0;0" calcMode="linear" />
+</path>
+<path d="M195 120 C200 120 240 220 310 320" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="300" stroke-dashoffset="300">
+<animate id="k1" begin="0;k4.end+0s" dur="20s" attributeName="stroke-dashoffset" keyTimes="0;0.166;0.25;1.0" values="300;300;0;0" calcMode="linear" />
+</path>
+</g>
+<g transform="translate(360 0)">
+<path d="M90 95 170 95 M130 50 130 50 130 135 M90 135 90 225 M90 135 170 135 170 135 170 225 M90 135 M90 180 170 180 M90 225 170 225 M90 265 170 265 M130 225 130 320 M210 75 295 75 295 75 295 110 M260 50 M260 50 260 110 M200 110 320 110 M215 135 215 190 M215 135 305 135 305 135 305 190 M215 190 M215 190 305 190 M200 220 320 220 M215 220 215 260 215 260 310 260 M260 220 M260 220 260 320" fill="none" stroke="#AAAAAA" stroke-opacity="1.0" stroke-width="21.6" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M90 95 170 95" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="80" stroke-dashoffset="80">
+<animate begin="k1.end-15s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.01;1" values="80;0;0"  calcMode="linear" />
+</path>
+<path d="M130 50 130 135" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="85" stroke-dashoffset="85">
+<animate begin="k1.end-15s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.01;0.0208;1" values="85;85;0;0"  calcMode="linear" />
+</path>
+<path d="M90 135 90 225" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="90" stroke-dashoffset="90">
+<animate begin="k1.end-15s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.0208;0.042;1" values="90;90;0;0"  calcMode="linear" />
+</path>
+<path d="M90 135 170 135 170 135 170 225 M90 135" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="170" stroke-dashoffset="170">
+<animate begin="k1.end-15s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.042;0.0625;1" values="170;170;0;0"  calcMode="linear" />
+</path>
+<path d="M90 180 170 180" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="80" stroke-dashoffset="80">
+<animate begin="k1.end-15s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.0625;0.08;1" values="80;80;0;0"  calcMode="linear" />
+</path>
+<path d="M90 225 170 225" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="80" stroke-dashoffset="80">
+<animate begin="k1.end-15s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.08;0.1042;1" values="80;80;0;0"  calcMode="linear" />
+</path>
+<path d="M90 265 170 265" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="80" stroke-dashoffset="80">
+<animate begin="k1.end-15s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.1042;0.125;1" values="80;80;0;0"  calcMode="linear" />
+</path>
+<path d="M130 225 130 320" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="95" stroke-dashoffset="95">
+<animate begin="k1.end-15s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.125;0.1458;1" values="95;95;0;0"  calcMode="linear" />
+</path>
+<path d="M210 75 295 75 295 75 295 110 M260 50" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="120" stroke-dashoffset="120">
+<animate begin="k1.end-15s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.1458;0.17;1" values="120;120;0;0"  calcMode="linear" />
+</path>
+<path d="M260 50 260 110" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="60" stroke-dashoffset="60">
+<animate begin="k1.end-15s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.17;0.1875;1" values="60;60;0;0"  calcMode="linear" />
+</path>
+<path d="M200 110 320 110" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="120" stroke-dashoffset="120">
+<animate begin="k1.end-15s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.1875;0.208;1" values="120;120;0;0"  calcMode="linear" />
+</path>
+<path d="M215 135 215 190" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="55" stroke-dashoffset="55">
+<animate begin="k1.end-15s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.208;0.2292;1" values="55;55;0;0"  calcMode="linear" />
+</path>
+<path d="M215 135 305 135 305 135 305 190 M215 190" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="145" stroke-dashoffset="145">
+<animate begin="k1.end-15s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.2292;0.25;1" values="145;145;0;0"  calcMode="linear" />
+</path>
+<path d="M215 190 305 190" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="90" stroke-dashoffset="90">
+<animate begin="k1.end-15s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.25;0.278;1" values="90;90;0;0"  calcMode="linear" />
+</path>
+<path d="M200 220 320 220" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="120" stroke-dashoffset="120">
+<animate begin="k1.end-15s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.278;0.292;1" values="120;120;0;0"  calcMode="linear" />
+</path>
+<path d="M215 220 215 260 215 260 310 260 M260 220" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="135" stroke-dashoffset="135">
+<animate begin="k1.end-15s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.292;0.3125;1" values="135;135;0;0"  calcMode="linear" />
+</path>
+<path d="M260 220 260 320" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="100" stroke-dashoffset="100">
+<animate id="k2" begin="k1.end-15s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.3125;0.3333;1" values="100;100;0;0" calcMode="linear" />
+</path>
+</g>
+<g transform="translate(720 0)">
+<path d="M90 60 300 50 310 120 M90 130 310 120 M90 60 90 310 115 285 M90 170 310 160 M147.5 127.5 C147.5 127.5 175 240 305 310 M305 310 325 270" fill="none" stroke="#AAAAAA" stroke-opacity="1.0" stroke-width="21.6" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M90 60 300 50 310 120" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="310" stroke-dashoffset="310">
+<animate begin="k1.end-10s" dur="10s" attributeName="stroke-dashoffset" keyTimes="0;0.1;1" values="310;0;0" calcMode="linear" />
+</path>
+<path d="M90 130 310 120" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="230" stroke-dashoffset="230">
+<animate begin="k1.end-10s" dur="10s" attributeName="stroke-dashoffset" keyTimes="0;0.1;0.2;1" values="230;230;0;0" calcMode="linear" />
+</path>
+<path d="M90 60 90 310 115 285" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="300" stroke-dashoffset="300">
+<animate begin="k1.end-10s" dur="10s" attributeName="stroke-dashoffset" keyTimes="0;0.2;0.3;1" values="300;300;0;0" calcMode="linear" />
+</path>
+<path d="M90 170 310 160" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="230" stroke-dashoffset="230">
+<animate begin="k1.end-10s" dur="10s" attributeName="stroke-dashoffset" keyTimes="0;0.3;0.4;1" values="230;230;0;0" calcMode="linear" />
+</path>
+<path d="M147.5 127.5 C147.5 127.5 175 240 305 310 L325 270" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="300" stroke-dashoffset="300">
+<animate id="k3" begin="k1.end-10s" dur="10s" attributeName="stroke-dashoffset" keyTimes="0;0.4;0.5;1" values="300;300;0;0" calcMode="linear" />
+</path>
+</g>
+<g transform="translate(1080 0)">
+<path d="M70 50 70 310 M70 50 330 50 330 310 M110 102 290 102 M120 134 120 226 M120 134 212 134 212 226 M120 226 212 226 M110 258 212 258 M235 80 C235 80 235 195 290 280 L290 280 C290 280 295 285 305 280 M290 165 240 280 M260 75 265 80 M70 310 330 310" fill="none" stroke="#AAAAAA" stroke-opacity="1.0" stroke-width="21.6" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M70 50 70 310" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="260" stroke-dashoffset="260">
+<animate begin="k1.end-5s" dur="5s" attributeName="stroke-dashoffset" keyTimes="0;0.0909;1" values="260;0;0" />
+</path>
+<path d="M70 50 330 50 330 310" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="520" stroke-dashoffset="520">
+<animate begin="k1.end-5s" dur="5s" attributeName="stroke-dashoffset" keyTimes="0;0.0909;0.1818;1" values="520;520;0;0" />
+</path>
+<path d="M110 102 290 102" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="240" stroke-dashoffset="240">
+<animate begin="k1.end-5s" dur="5s" attributeName="stroke-dashoffset" keyTimes="0;0.1818;0.2727;1" values="240;240;0;0" />
+</path>
+<path d="M120 134 120 226" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="102" stroke-dashoffset="102">
+<animate begin="k1.end-5s" dur="5s" attributeName="stroke-dashoffset" keyTimes="0;0.2727;0.3636;1" values="102;102;0;0" />
+</path>
+<path d="M120 134 212 134 212 226" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="204" stroke-dashoffset="204">
+<animate begin="k1.end-5s" dur="5s" attributeName="stroke-dashoffset" keyTimes="0;0.3636;0.4545;1" values="204;204;0;0" />
+</path>
+<path d="M120 226 212 226" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="102" stroke-dashoffset="102">
+<animate begin="k1.end-5s" dur="5s" attributeName="stroke-dashoffset" keyTimes="0;0.4545;0.5454;1" values="102;102;0;0" />
+</path>
+<path d="M110 258 212 258" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="102" stroke-dashoffset="102">
+<animate begin="k1.end-5s" dur="5s" attributeName="stroke-dashoffset" keyTimes="0;0.5454;0.6363;1" values="102;102;0;0" />
+</path>
+<path d="M235 80 C235 80 235 195 290 280 L290 280 C290 280 295 285 305 280" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="240" stroke-dashoffset="240">
+<animate begin="k1.end-5s" dur="5s" attributeName="stroke-dashoffset" keyTimes="0;0.6363;0.7272;1" values="240;240;0;0" />
+</path>
+<path d="M290 165 240 280" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="140" stroke-dashoffset="140">
+<animate begin="k1.end-5s" dur="5s" attributeName="stroke-dashoffset" keyTimes="0;0.7272;0.8181;1" values="140;140;0;0" />
+</path>
+<path d="M260 75 265 80" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="8" stroke-dashoffset="8">
+<animate begin="k1.end-5s" dur="5s" attributeName="stroke-dashoffset" keyTimes="0;0.8181;0.9090;1" values="8;8;0;0" />
+</path>
+<path d="M70 310 330 310" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="260" stroke-dashoffset="260">
+<animate id="k4" begin="k1.end-5s" dur="5s" attributeName="stroke-dashoffset" keyTimes="0;0.9090;1" values="260;260;0" />
+</path>
+</g>
+<g transform="translate(0 0)">
+<path d="M90 60 300 50 310 120 M90 130 310 120 M90 60 90 310 115 285 M90 170 310 160 M147.5 127.5 C147.5 127.5 175 240 305 310 M305 310 325 270" fill="none" stroke="#AAAAAA" stroke-opacity="1.0" stroke-width="21.6" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M90 60 300 50 310 120" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="310" stroke-dashoffset="310">
+<animate begin="0.5s;k5.end+0s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.04;1" values="310;0;0" calcMode="linear" />
+</path>
+<path d="M90 130 310 120" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="230" stroke-dashoffset="230">
+<animate begin="0.5s;k5.end+0s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.04;0.08;1" values="230;230;0;0" calcMode="linear" />
+</path>
+<path d="M90 60 90 310 115 285" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="300" stroke-dashoffset="300">
+<animate begin="0.5s;k5.end+0s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.08;0.12;1" values="300;300;0;0" calcMode="linear" />
+</path>
+<path d="M90 170 310 160" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="230" stroke-dashoffset="230">
+<animate begin="0.5s;k5.end+0s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.12;0.16;1" values="230;230;0;0" calcMode="linear" />
+</path>
+<path d="M147.5 127.5 C147.5 127.5 175 240 305 310 L325 270" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="300" stroke-dashoffset="300">
+<animate id="k1" begin="0.5s;k5.end+0s" dur="15s" attributeName="stroke-dashoffset" keyTimes="0;0.16;0.2;1" values="300;300;0;0" calcMode="linear" />
+</path>
+</g>
+<g transform="translate(360 0)">
+<path d="M195 60 205 80 M95 110 305 110 M95 210 305 210 M200 110 200 310 M95 310 305 310" fill="none" stroke="#AAAAAA" stroke-opacity="1.0" stroke-width="21.6" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M195 60 205 80" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="22.4" stroke-dashoffset="22.4">
+<animate begin="k5.end-12s" dur="12s" attributeName="stroke-dashoffset" keyTimes="0;0.05;1" values="22.4;0;0" calcMode="linear" />
+</path>
+<path d="M95 110 305 110" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="210" stroke-dashoffset="210">
+<animate begin="k5.end-12s" dur="12s" attributeName="stroke-dashoffset" keyTimes="0;0.05;0.10;1" values="210;210;0;0" calcMode="linear" />
+</path>
+<path d="M95 210 305 210" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="210" stroke-dashoffset="210">
+<animate begin="k5.end-12s" dur="12s" attributeName="stroke-dashoffset" keyTimes="0;0.10;0.15;1" values="210;210;0;0" calcMode="linear" />
+</path>
+<path d="M200 110 200 310" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="218" stroke-dashoffset="218">
+<animate begin="k5.end-12s" dur="12s" attributeName="stroke-dashoffset" keyTimes="0;0.15;0.20;1" values="218;218;0;0" calcMode="linear" />
+</path>
+<path d="M95 310 305 310" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="210" stroke-dashoffset="210">
+<animate id="k2" begin="k5.end-12s" dur="12s" attributeName="stroke-dashoffset" keyTimes="0;0.20;0.25;1" values="210;210;0;0" calcMode="linear" />
+</path>
+</g>
+<g transform="translate(720 0)">
+<path d="M100 140 300 140 M150 60 150 220 M250 60 250 220 M90 220 310 220 M155 250 95 310 M245 250 305 310" fill="none" stroke="#AAAAAA" stroke-opacity="1.0" stroke-width="21.6" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M100 140 300 140" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="200" stroke-dashoffset="200">
+<animate begin="k5.end-9s" dur="9s" attributeName="stroke-dashoffset" keyTimes="0;0.0555;1" values="200;0;0" calcMode="linear" />
+</path>
+<path d="M150 60 150 220" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="160" stroke-dashoffset="160">
+<animate begin="k5.end-9s" dur="9s" attributeName="stroke-dashoffset" keyTimes="0;0.0555;0.1111;1" values="160;160;0;0" calcMode="linear" />
+</path>
+<path d="M250 60 250 220" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="160" stroke-dashoffset="160">
+<animate begin="k5.end-9s" dur="9s" attributeName="stroke-dashoffset" keyTimes="0;0.1111;0.1666;1" values="160;160;0;0" calcMode="linear" />
+</path>
+<path d="M90 220 310 220" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="220" stroke-dashoffset="220">
+<animate begin="k5.end-9s" dur="9s" attributeName="stroke-dashoffset" keyTimes="0;0.1666;0.2222;1" values="220;220;0;0" calcMode="linear" />
+</path>
+<path d="M155 250 95 310" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="100" stroke-dashoffset="100">
+<animate begin="k5.end-9s" dur="9s" attributeName="stroke-dashoffset" keyTimes="0;0.2222;0.2777;1" values="100;100;0;0" calcMode="linear" />
+</path>
+<path d="M245 250 305 310" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="100" stroke-dashoffset="100">
+<animate id="k3" begin="k5.end-9s" dur="9s" attributeName="stroke-dashoffset" keyTimes="0;0.2777;0.3333;1" values="100;100;0;0" calcMode="linear" />
+</path>
+</g>
+<g transform="translate(1080 0)">
+<path d="M170 60 100 80 M90 140 180 140 M135 70 135 310 M135 140 100 285 M135 140 170 250 M200 70 200 300 M200 70 305 70 305 300 M200 300 305 300" fill="none" stroke="#AAAAAA" stroke-opacity="1.0" stroke-width="21.6" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M170 60 100 80" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="90" stroke-dashoffset="90">
+<animate begin="k5.end-6s" dur="6s" attributeName="stroke-dashoffset" keyTimes="0;0.0625;1" values="90;0;0" calcMode="linear" />
+</path>
+<path d="M90 140 180 140" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="90" stroke-dashoffset="90">
+<animate begin="k5.end-6s" dur="6s" attributeName="stroke-dashoffset" keyTimes="0;0.0625;0.125;1" values="90;90;0;0" calcMode="linear" />
+</path>
+<path d="M135 70 135 310" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="240" stroke-dashoffset="240">
+<animate begin="k5.end-6s" dur="6s" attributeName="stroke-dashoffset" keyTimes="0;0.125;0.1875;1" values="240;240;0;0" calcMode="linear" />
+</path>
+<path d="M135 140 100 285" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="150" stroke-dashoffset="150">
+<animate begin="k5.end-6s" dur="6s" attributeName="stroke-dashoffset" keyTimes="0;0.1875;0.25;1" values="150;150;0;0" calcMode="linear" />
+</path>
+<path d="M135 140 170 250" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="120" stroke-dashoffset="120">
+<animate begin="k5.end-6s" dur="6s" attributeName="stroke-dashoffset" keyTimes="0;0.25;0.3125;1" values="120;120;0;0" calcMode="linear" />
+</path>
+<path d="M200 70 200 300" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="230" stroke-dashoffset="230">
+<animate begin="k5.end-6s" dur="6s" attributeName="stroke-dashoffset" keyTimes="0;0.3125;0.375;1" values="230;230;0;0" calcMode="linear" />
+</path>
+<path d="M200 70 305 70 305 300" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="335" stroke-dashoffset="335">
+<animate begin="k5.end-6s" dur="6s" attributeName="stroke-dashoffset" keyTimes="0;0.375;0.4375;1" values="335;335;0;0" calcMode="linear" />
+</path>
+<path d="M200 300 305 300" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="105" stroke-dashoffset="105">
+<animate id="k4" begin="k5.end-6s" dur="6s" attributeName="stroke-dashoffset" keyTimes="0;0.4375;0.5;1" values="105;105;0;0" calcMode="linear" />
+</path>
+</g>
+<g transform="translate(1440 0)">
+<path d="M70 50 70 310 M70 50 330 50 330 310 M110 102 290 102 M120 134 120 226 M120 134 212 134 212 226 M120 226 212 226 M110 258 212 258 M235 80 C235 80 235 195 290 280 L290 280 C290 280 295 285 305 280 M290 165 240 280 M260 75 265 80 M70 310 330 310" fill="none" stroke="#AAAAAA" stroke-opacity="1.0" stroke-width="21.6" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M70 50 70 310" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="260" stroke-dashoffset="260">
+<animate begin="k1.end-3s" dur="3s" attributeName="stroke-dashoffset" keyTimes="0;0.0909;1" values="260;0;0" />
+</path>
+<path d="M70 50 330 50 330 310" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="520" stroke-dashoffset="520">
+<animate begin="k1.end-3s" dur="3s" attributeName="stroke-dashoffset" keyTimes="0;0.0909;0.1818;1" values="520;520;0;0" />
+</path>
+<path d="M110 102 290 102" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="240" stroke-dashoffset="240">
+<animate begin="k1.end-3s" dur="3s" attributeName="stroke-dashoffset" keyTimes="0;0.1818;0.2727;1" values="240;240;0;0" />
+</path>
+<path d="M120 134 120 226" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="102" stroke-dashoffset="102">
+<animate begin="k1.end-3s" dur="3s" attributeName="stroke-dashoffset" keyTimes="0;0.2727;0.3636;1" values="102;102;0;0" />
+</path>
+<path d="M120 134 212 134 212 226" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="204" stroke-dashoffset="204">
+<animate begin="k1.end-3s" dur="3s" attributeName="stroke-dashoffset" keyTimes="0;0.3636;0.4545;1" values="204;204;0;0" />
+</path>
+<path d="M120 226 212 226" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="102" stroke-dashoffset="102">
+<animate begin="k1.end-3s" dur="3s" attributeName="stroke-dashoffset" keyTimes="0;0.4545;0.5454;1" values="102;102;0;0" />
+</path>
+<path d="M110 258 212 258" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="102" stroke-dashoffset="102">
+<animate begin="k1.end-3s" dur="3s" attributeName="stroke-dashoffset" keyTimes="0;0.5454;0.6363;1" values="102;102;0;0" />
+</path>
+<path d="M235 80 C235 80 235 195 290 280 L290 280 C290 280 295 285 305 280" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="240" stroke-dashoffset="240">
+<animate begin="k1.end-3s" dur="3s" attributeName="stroke-dashoffset" keyTimes="0;0.6363;0.7272;1" values="240;240;0;0" />
+</path>
+<path d="M290 165 240 280" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="140" stroke-dashoffset="140">
+<animate begin="k1.end-3s" dur="3s" attributeName="stroke-dashoffset" keyTimes="0;0.7272;0.8181;1" values="140;140;0;0" />
+</path>
+<path d="M260 75 265 80" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="8" stroke-dashoffset="8">
+<animate begin="k1.end-3s" dur="3s" attributeName="stroke-dashoffset" keyTimes="0;0.8181;0.9090;1" values="8;8;0;0" />
+</path>
+<path d="M70 310 330 310" fill="none" stroke="#202020" stroke-opacity="0.8" stroke-width="14.4" stroke-linejoin="round" stroke-linecap="square" stroke-dasharray="260" stroke-dashoffset="260">
+<animate id="k5" begin="k1.end-3s" dur="3s" attributeName="stroke-dashoffset" keyTimes="0;0.9090;1" values="260;260;0" />
+</path>
+</g>
+</g>
+</svg>`], { type: "image/svg+xml" }), function (param) {
+                myimg.src = param;
+                window.scrollTo(0, window.innerHeight);
+                window.setTimeout(function () { start_recording(); }, 1000);
+            });*/
+            toDataURL(new Blob([HTMLFunc(customSVG.innerText)], { type: "image/svg+xml" }), function (param) {
+                console.log(param);
+                myimg.src = param;
+                window.setTimeout(function () { start_recording(); }, 1000);
+            });
+        }
+        var customSVG_data = customSVG.innerText;
+        customSVG.addEventListener("keyup", function (ev) {
+            if (customSVG.innerText == customSVG_data) {
+                return;
+            } else {
+                customSVG_data = customSVG.innerText;
+            }
+            if (customSVG.innerText.length === 0) {
+                customSVG.classList.add("with_placeholder");
+            } else {
+                customSVG.classList.remove("with_placeholder");
+            }
+        });
+        cgrcssjs.styleAll();
+    </script>
+</body>
+
+</html>

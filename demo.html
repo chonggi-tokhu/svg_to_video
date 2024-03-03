@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>capturing demo</title>
+    <style>
+        .with_placeholder::after {
+            content: 'your html code';
+            color: grey;
+        }
+
+        @keyframes blinking_text {
+            from {
+                opacity: 1.0;
+            }
+
+            30% {
+                opacity: 1.0;
+            }
+
+            50% {
+                opacity: 0.0;
+            }
+
+            70% {
+                opacity: 1.0;
+            }
+
+            to {
+                opacity: 1.0;
+            }
+        }
+
+        [contenteditable='true']:focus {
+
+            border: 1.5px solid #050505;
+        }
+
+        /*[contenteditable='true']:focus::after {
+            content: '';
+            width: 0.08px;
+            height: 1em;
+            padding-top: 0.08em;
+            background: #050505;
+            animation: blinking_text 0.08s infinite;
+        }*/
+
+        [contenteditable='true'] {
+            border: 1px solid #050505;
+        }
+
+        #customHTML {
+            --shadow-deepness: 0.4px;
+            box-shadow: calc(1 * var(--shadow-deepness)) calc(1 * var(--shadow-deepness)) 0.5px 0.5px #555555 inset, calc(1 * var(--shadow-deepness)) calc(-1 * var(--shadow-deepness)) 0.5px 0.5px #555555 inset, calc(-1 * var(--shadow-deepness)) calc(1 * var(--shadow-deepness)) 0.5px 0.5px #555555 inset, calc(-1 * var(--shadow-deepness)) calc(-1 * var(--shadow-deepness)) 0.5px 0.5px #555555 inset;
+        }
+
+        #customHTML:focus {
+            --shadow-deepness: 0.6px;
+        }
+    </style>
+</head>
+
+<body>
+    <div>
+        <ul>
+            <li>
+                <h1>CAPTURE SCREEN</h1>
+            </li>
+            <li>
+                <h3>
+                    <a href="./test_2.js">how does it work?</a>
+                </h3>
+            </li>
+        </ul>
+        <canvas id="mycanvas" width="540" height="360"></canvas>
+        <div id="myEl">
+            <div style="background: #05a0f0;color: #ffffff;">a quick brown fox jumps over the lazy dog</div>
+        </div>
+        <div class="input-group" id="myInputGroup"><button onclick="draw_onCanvas()">preview image</button>
+            <button onclick="capturing.capture({canvasid:'mycanvas',download:true});">download
+                selected area of this html page in image</button>
+            <select name="format_select" id="format_select"
+                onchange="capturing.setFormat(document.getElementById('format_select').value);">
+                <option value="image/png">PNG</option>
+                <option value="image/jpg">JPG</option>
+                <option value="image/svg+xml">SVG</option>
+                <option value="image/gif">GIF</option>
+            </select>
+            <select name="mode_select" id="mode_select"
+                onchange="capturing.changeMode(document.getElementById('mode_select').value); if (capturing.mode=='svg'){capturing.svginner=HTML_Text.Text_to_HTML(customHTML.innerText)}">
+                <option disabled>change what work you gonna do (capture html page / convert svg to another format)
+                </option>
+                <option value="html">capture html element that was read by browser and you can view</option>
+                <option value="svg">just convert svg to another format</option>
+            </select>
+            <input type="text" name="imgwidth" id="imgwidth" placeholder="image width" value="540" onkeyup="
+            var w_h = img_width_height();
+            capturing.imgEl.width = w_h.x;
+            capturing.imgEl.setAttribute('width', w_h.x);">
+            <input type="text" name="imgheight" id="imgheight" placeholder="image height" value="360" onkeyup="
+            var w_h = img_width_height();
+            
+            capturing.imgEl.height = w_h.y;
+            capturing.imgEl.setAttribute('height', w_h.y);">
+            <div style="display: flex;">
+                <div contenteditable="true" id="customHTML">&lt;div style=&quot;background: #05a0f0;color:
+                    #ffffff;&quot;&gt;a quick brown fox jumps over the lazy dog&lt;/div&gt;</div> - Custom HTML
+            </div>
+        </div>
+        <img id="myimg">
+    </div>
+    <script src="./test_2.js"></script>
+    <script>
+        var HTML_Text = {
+            Text_to_HTML: function (str) {
+                var newStr = new String(str);
+                newStr = newStr.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&apos;', "'").replaceAll('&quot;', '"');
+                return newStr;
+            },
+            HTML_to_Text: function (str) {
+                var newStr = new String(str);
+                newStr = newStr.replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll("'", '&apos;').replaceAll('"', '&quot;');
+                return newStr;
+            }
+        }
+        var customHTML = document.getElementById("customHTML");
+        capturing.setEl('myEl', 'myimg', 'mycanvas');
+        capturing.setFormat('image/png');
+        capturing.imgEl.src = capturing.SVGonCanvas('mycanvas');
+        capturing.imgEl.setAttribute("src", capturing.SVGonCanvas('mycanvas'));
+        function img_width_height() {
+            var rtv = { x: 540, y: 360 };
+            console.log(Number(document.getElementById('imgheight').value));
+            rtv['x'] = (!isNaN(Number(document.getElementById('imgwidth').value))) ? Number(document.getElementById('imgwidth').value) : rtv['x'];
+            rtv['y'] = (!isNaN(Number(document.getElementById('imgheight').value))) ? Number(document.getElementById('imgheight').value) : rtv['y'];
+            return rtv;
+        }
+        function draw_onCanvas() {
+            capturing.imgEl.src = capturing.SVGonCanvas('mycanvas');
+            capturing.imgEl.setAttribute("src", capturing.SVGonCanvas('mycanvas'));
+            var w_h = img_width_height();
+            capturing.imgEl.width = w_h.x;
+            capturing.imgEl.setAttribute("width", w_h.x);
+            capturing.imgEl.height = w_h.y;
+            capturing.imgEl.setAttribute("height", w_h.y);
+            var width = w_h.x;
+            var height = w_h.y;
+            document.getElementById('mycanvas').getContext("2d").drawImage(capturing.imgEl, 0, 0, width, height, 0, 0, width, height);
+        }
+        var customHTML_data = customHTML.innerText;
+        document.getElementById("myInputGroup").addEventListener("keyup", function (ev) {
+            if (customHTML.innerText == customHTML_data) {
+                return;
+            } else {
+                customHTML_data = customHTML.innerText;
+            }
+            capturing.imgEl.src = capturing.SVGonCanvas('mycanvas');
+            capturing.imgEl.setAttribute("src", capturing.SVGonCanvas('mycanvas'));
+            var w_h = img_width_height();
+            capturing.imgEl.width = w_h.x;
+            capturing.imgEl.setAttribute("width", w_h.x);
+            capturing.imgEl.height = w_h.y;
+            capturing.imgEl.setAttribute("height", w_h.y);
+            capturing.canvas.width = w_h.x;
+            capturing.canvas.setAttribute("width", w_h.x);
+            capturing.canvas.height = w_h.y;
+            capturing.canvas.setAttribute("height", w_h.y);
+        });
+        capturing.imgEl.onload = function () {
+
+            var w_h = img_width_height();
+            var width = w_h.x;
+            var height = w_h.y;
+            document.getElementById('mycanvas').getContext("2d").drawImage(capturing.imgEl, 0, 0, width, height, 0, 0, width, height);
+        }
+        customHTML.addEventListener("keyup", function (ev) {
+            if (customHTML.innerText == customHTML_data) {
+                return;
+            } else {
+                customHTML_data = customHTML.innerText;
+            }
+            console.log(HTML_Text.Text_to_HTML(customHTML.innerText));
+            capturing.el.innerHTML = HTML_Text.Text_to_HTML(customHTML.innerText);
+            if (customHTML.innerText.length === 0) {
+                customHTML.classList.add("with_placeholder");
+            } else {
+                customHTML.classList.remove("with_placeholder");
+            }
+        });
+    </script>
+</body>
+
+</html>
